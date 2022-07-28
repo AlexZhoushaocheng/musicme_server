@@ -1,0 +1,7 @@
+[default]
+port=8888
+workers=10
+
+[debug]
+port=8888
+workers=10
