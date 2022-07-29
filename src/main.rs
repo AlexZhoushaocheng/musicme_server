@@ -1,41 +1,37 @@
-#[macro_use] extern crate rocket;
+#[macro_use]
+extern crate rocket;
 
-use rocket::{Rocket, Build, State};
-use figment::{Figment, providers::{Format, Toml, Json, Env}};
-use rocket::serde::{Serialize, Deserialize};
+// use rocket::{Rocket, Build, State};
+use figment::{
+    providers::{Format, Json},
+    Figment,
+};
 
-mod db;
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(crate = "rocket::serde")]
-struct MariaConf{
-    ip:String,
-    port:i16,
-    user:String,
-    db_name:String,
-
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(crate = "rocket::serde")]
-struct MinioConf{
-    ip:String,
-    port:i16,
-    user:String,
-    basket_name:String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(crate = "rocket::serde")]
-struct MyConf{
-    maria:MariaConf,
-    minio:MinioConf
-}
+mod minio;
+// mod db;
+mod config;
+use config::MyConf;
 
 #[launch]
 fn rocket() -> _ {
-    let conf:MyConf = Figment::new().join(Json::file("config.json")).extract().expect("加载配置错误");
-    println!("{:?}", conf.maria.ip);
+    info!("hello");
+    // rocket::tokio::spawn(async move{
+    //     minio::minio_test().await;
 
-    rocket::build().manage(conf)
+    // });
+
+    let conf: MyConf = Figment::new()
+        .join(Json::file("config.json"))
+        .extract()
+        .expect("加载配置错误");
+
+    let minio = minio::Minio::new(
+        "".into(),
+        conf.minio.endpoint.clone(),
+        conf.minio.user.clone(),
+        conf.minio.password.clone(),
+    )
+    .unwrap();
+
+    rocket::build().manage(conf).manage(minio)
 }

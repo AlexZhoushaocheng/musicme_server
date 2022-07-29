@@ -9,3 +9,5 @@ edition = "2021"
 rocket = { version = "0.5.0-rc.2", features = ["secrets"] }
 mysql = "*"
 figment={version = "*", features=["json"]}
+rust-s3 ={version = "*"}
+log = "*"

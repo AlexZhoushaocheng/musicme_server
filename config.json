@@ -7,10 +7,9 @@
         "db_name":""
     },
     "minio":{
-        "ip":"",
-        "port":3306,
+        "endpoint":"http://www.litesite.cn:9000",
         "user":"",
         "password":"",
-        "basket_name":""
+        "bucket_name":""
     }
 }
