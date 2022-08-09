@@ -6,8 +6,23 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rocket = { version = "0.5.0-rc.2", features = ["secrets"] }
+rocket = { version = "^0.5.0-rc.2", features = ["secrets", "json"] }
 mysql = "*"
 figment={version = "*", features=["json"]}
 rust-s3 ={version = "*"}
 log = "*"
+
+md5 = "0.7.0"
+# 密码规则解析器
+password-rules-parser = "1.0.3"
+
+[dependencies.sqlx]
+version = "0.5.1"
+default-features = false
+features = ["macros", "offline", "migrate", "mysql", "runtime-tokio-rustls"]
+
+[dependencies.rocket_db_pools]
+version = "0.1.0-rc.2"
+features = ["sqlx_mysql", "sqlx_macros"]
+
+

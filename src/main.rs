@@ -7,10 +7,20 @@ use figment::{
     Figment,
 };
 
+mod mariadb;
+mod login;
 mod minio;
 // mod db;
 mod config;
 use config::MyConf;
+use rocket::fairing::AdHoc;
+use login::User;
+
+#[get("/")]
+async fn test_user(user: User<'_>)-> &'static str{
+ 
+    "lalala"
+}
 
 #[launch]
 fn rocket() -> _ {
@@ -19,7 +29,6 @@ fn rocket() -> _ {
     //     minio::minio_test().await;
 
     // });
-
     let conf: MyConf = Figment::new()
         .join(Json::file("config.json"))
         .extract()
@@ -33,5 +42,5 @@ fn rocket() -> _ {
     )
     .unwrap();
 
-    rocket::build().manage(conf).manage(minio)
+    rocket::build().attach(mariadb::stage()).manage(conf).manage(minio).mount("/test_user", routes![test_user]).mount("/session", login::routes())
 }
