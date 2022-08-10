@@ -24,7 +24,7 @@ pub struct Minio {
 }
 
 impl Minio {
-    pub fn new(
+    pub async fn new(
         bucket_name: String,
         url: String,
         username: String,
@@ -34,6 +34,9 @@ impl Minio {
             region: "".into(),
             endpoint: url.clone(),
         };
+
+        println!("bucket_name:{} url:{} username:{} password:{}", bucket_name, url, username, password);
+
         let credentials = Credentials::new(
             Some(username.as_str()),
             Some(password.as_str()),
@@ -44,14 +47,17 @@ impl Minio {
         .unwrap();
 
         let _bucket = Bucket::new(bucket_name.as_str(), region, credentials)?.with_path_style();
-        
+        // let objs = _bucket.list("/".to_string(), Some("/".to_string())).await.unwrap();
+
+        // println!("{:?}", objs);
         Ok(Minio {
             bucket:_bucket
         })
     }
 
-    pub async fn get_object<T>(self, path:T) -> Result<ResponseData, S3Error> where T:AsRef<str> {
-        
+    pub async fn get_object<T>(&self, path:T) -> Result<ResponseData, S3Error> where T:AsRef<str> {
+        // let l = self.bucket.list("/".to_string(), Some("/".to_string())).await.unwrap();
+        // println!("{:?}", l);
         let data = self.bucket.get_object(path).await?;
         Ok(data)
     }

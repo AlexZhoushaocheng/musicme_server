@@ -3,14 +3,13 @@ use rocket::{
     http::{Cookie, CookieJar, Status},
     outcome::IntoOutcome,
     request::{self, FromRequest, Outcome, Request},
-    response::{Flash, Redirect},
 };
 
 use super::mariadb::Db;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket_db_pools::{sqlx, Connection, Database};
 
-pub struct User<'r>(&'r str);
+pub struct User(pub String);
 
 #[derive(Debug)]
 pub enum ApiKeyError {
@@ -19,14 +18,14 @@ pub enum ApiKeyError {
 }
 
 #[rocket::async_trait]
-impl<'r> FromRequest<'r> for User<'r> {
+impl<'r> FromRequest<'r> for User {
     type Error = ();
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        // let s = ;
-            
-            Outcome::Success(User(req.cookies()
-            .get_private("user_id").unwrap().value()))
-            
+        req.cookies()
+            .get_private("user_id")
+            .and_then(|cookie| Some(cookie.value().to_string()))
+            .map(User)
+            .or_forward(())
     }
 }
 
@@ -36,13 +35,12 @@ pub struct Admin(String);
 impl<'r> FromRequest<'r> for Admin {
     type Error = ();
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        req.cookies()
-            .get_private("user_id")
-            .and_then(|id| Some(id.value().to_string()))
-            .map(Admin)
-            .or_forward(())
+        let user = req.guard::<User>().await;
+        let ad = user.map(|u|{Admin(u.0)});
+        ad
     }
 }
+
 
 // 登录Form
 #[derive(FromForm)]

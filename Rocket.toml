@@ -9,5 +9,4 @@ workers=10
 
 
 [default.databases.octopus]
-# name = "mysql"
 url="mysql://admin:admin1234@192.168.10.17:8806/octopus"
