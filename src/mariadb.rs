@@ -4,13 +4,22 @@ use rocket::fairing::{self, AdHoc};
 use rocket::{Build, Rocket};
 use rocket_db_pools::{sqlx,  Database};
 
-type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T, E>;
+pub type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T, E>;
+
+// 用户账户
+#[derive(Debug, sqlx::FromRow)]
+pub struct User {
+    pub id: i64,
+    pub username: String,
+    pub password: String,
+}
 
 #[derive(Database)]
 #[database("octopus")]
 pub struct Db(sqlx::MySqlPool);
 
 impl Db {
+    // 根据用户名获取一个用户信息
     pub async fn get_user(&self, username: &str) -> Result<User> {
         let mut conn = self.acquire().await?;
         let user: User = sqlx::query_as("select * from users where username= ?")
@@ -20,6 +29,7 @@ impl Db {
         Ok(user)
     }
 
+    // 注册一个用户
     pub async fn reg_user(&self, username: &str, password: &str) -> Result<()> {
         let mut conn = self.acquire().await?;
         let digest_password = md5::compute(password);
@@ -30,13 +40,6 @@ impl Db {
             .await?;
         Ok(())
     }
-}
-
-#[derive(Debug, sqlx::FromRow)]
-pub struct User {
-    pub id: i64,
-    pub username: String,
-    pub password: String,
 }
 
 

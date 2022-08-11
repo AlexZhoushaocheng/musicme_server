@@ -81,15 +81,21 @@ async fn post_login(jar: &CookieJar<'_>, login: Form<Login<'_>>, db: &Db) -> Jso
     }
 }
 
-#[get("/test")]
-fn test(jar: &CookieJar<'_>) -> &'static str {
-    let user_id = jar.get_private("user_id");
-    match user_id {
-        None => "failed",
-        Some(_) => "ok",
-    }
+
+#[get("/logout")]
+fn logout(jar: &CookieJar<'_>){
+    jar.remove_private(Cookie::named("user_id"))
 }
 
+// #[get("/test")]
+// fn test(jar: &CookieJar<'_>) -> &'static str {
+//     let user_id = jar.get_private("user_id");
+//     match user_id {
+//         None => "failed",
+//         Some(_) => "ok",
+//     }
+// }
+
 pub fn routes() -> Vec<rocket::Route> {
-    routes![post_login, test]
+    routes![post_login, logout]
 }

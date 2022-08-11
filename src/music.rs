@@ -1,12 +1,12 @@
 use rocket::{
-    http::{ContentType},
+    http::{ContentType}, serde::json::Json,
 };
 use crate::login::User;
-use crate::musiclib::MusicLib;
+use crate::musiclib::{MusicLib, SearchType, Song};
 
-#[derive(Responder)]
-#[response(status = 200, content_type = "json")]
-struct Mp3(Vec<u8>);
+// #[derive(Responder)]
+// #[response(status = 200, content_type = "json")]
+// struct Mp3(Vec<u8>);
 
 #[get("/query/<name>")]
 async fn get_music(name:String, _user:User, musiclib:MusicLib<'_>)->Option<(ContentType, Vec<u8>)>{
@@ -21,6 +21,14 @@ async fn get_music(name:String, _user:User, musiclib:MusicLib<'_>)->Option<(Cont
     
 }
 
+#[get("/search/<key>")]
+async fn search_song( _user:User, musiclib:MusicLib<'_>, key:&str)->Option<Json<Vec<Song>>>{
+     match musiclib.search_song(key, SearchType::ByName).await {
+         Ok(songs) => Some(Json(songs)),
+         Err(_) => None
+     } 
+}
+
 pub fn routes() -> Vec<rocket::Route> {
-    routes![get_music]
+    routes![get_music, search_song]
 }
