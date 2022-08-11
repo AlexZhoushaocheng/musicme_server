@@ -1,10 +1,7 @@
 use crate::{mariadb::Db, minio::Minio};
 
 use rocket::{
-    http::{Cookie, CookieJar, Status},
-    outcome::IntoOutcome,
     request::{self, FromRequest, Outcome, Request},
-    response::{Flash, Redirect},
 };
 
 pub struct MusicLib<'l> {
@@ -23,11 +20,10 @@ impl<'r> FromRequest<'r> for MusicLib<'r> {
     }
 }
 
-pub struct Music(Vec<u8>);
+pub struct Music(pub Vec<u8>);
 
 impl<'l> MusicLib<'l> {
     pub async fn get_music(&self, name: &str) -> Option<Music>{
-        println!("name: {}", name);
         let data = self.minio.get_object(format!("/{}",name)).await.ok()?;
         Some(Music(data.bytes().to_vec()))
     }

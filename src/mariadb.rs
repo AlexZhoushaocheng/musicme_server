@@ -1,8 +1,8 @@
-use md5::{Digest};
+// use md5::{Digest};
 use rocket::fairing::{self, AdHoc};
-use rocket::serde::{json::Json, Deserialize, Serialize};
-use rocket::{futures, Build, Rocket};
-use rocket_db_pools::{sqlx, Connection, Database};
+// use rocket::serde::{json::Json, Deserialize, Serialize};
+use rocket::{Build, Rocket};
+use rocket_db_pools::{sqlx,  Database};
 
 type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T, E>;
 
@@ -13,7 +13,7 @@ pub struct Db(sqlx::MySqlPool);
 impl Db {
     pub async fn get_user(&self, username: &str) -> Result<User> {
         let mut conn = self.acquire().await?;
-        let user: User = sqlx::query_as("select * from user where username= ?")
+        let user: User = sqlx::query_as("select * from users where username= ?")
             .bind(username)
             .fetch_one(&mut conn)
             .await?;
@@ -41,21 +41,21 @@ pub struct User {
 
 
 
-#[derive(Debug, sqlx::FromRow)]
-struct Person {
-    id: i32,
-    name: String,
-    sex: i32,
-}
+// #[derive(Debug, sqlx::FromRow)]
+// struct Person {
+//     id: i32,
+//     name: String,
+//     sex: i32,
+// }
 
-#[get("/")]
-async fn list(mut db: Connection<Db>) -> Result<String> {
-    let p: Vec<Person> = sqlx::query_as("select * from music")
-        .fetch_all(&mut *db)
-        .await?;
-    println!("{:?}", p);
-    Ok("list".to_string())
-}
+// #[get("/")]
+// async fn list(mut db: Connection<Db>) -> Result<String> {
+//     let p: Vec<Person> = sqlx::query_as("select * from music")
+//         .fetch_all(&mut *db)
+//         .await?;
+//     println!("{:?}", p);
+//     Ok("list".to_string())
+// }
 
 // 初始化书数据库
 async fn init_db(rocket: Rocket<Build>) -> fairing::Result {
@@ -65,7 +65,7 @@ async fn init_db(rocket: Rocket<Build>) -> fairing::Result {
             let conn = db.acquire().await;
             match conn {
                 Ok(mut conn_) => {
-                    let row = sqlx::query("select version()").fetch_one(&mut conn_).await;
+                    let _row = sqlx::query("select version()").fetch_one(&mut conn_).await;
                     Ok(rocket)
                 }
                 Err(_) => Err(rocket),
@@ -80,6 +80,6 @@ pub fn stage() -> AdHoc {
         rocket
             .attach(Db::init())
             .attach(AdHoc::try_on_ignite("Init DB", init_db))
-            .mount("/sql", routes![list])
+            // .mount("/sql", routes![list])
     })
 }

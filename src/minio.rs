@@ -1,3 +1,9 @@
+use super::config::MyConf;
+use figment::{
+    providers::{Format, Json},
+    Figment,
+};
+use rocket::fairing::{AdHoc};
 use s3::bucket::Bucket;
 use s3::creds::Credentials;
 use s3::error::S3Error;
@@ -18,7 +24,6 @@ use s3::request_trait::ResponseData;
 //         .with_path_style();
 // }
 
-
 pub struct Minio {
     bucket: Bucket,
 }
@@ -35,7 +40,10 @@ impl Minio {
             endpoint: url.clone(),
         };
 
-        println!("bucket_name:{} url:{} username:{} password:{}", bucket_name, url, username, password);
+        println!(
+            "bucket_name:{} url:{} username:{} password:{}",
+            bucket_name, url, username, password
+        );
 
         let credentials = Credentials::new(
             Some(username.as_str()),
@@ -50,15 +58,36 @@ impl Minio {
         // let objs = _bucket.list("/".to_string(), Some("/".to_string())).await.unwrap();
 
         // println!("{:?}", objs);
-        Ok(Minio {
-            bucket:_bucket
-        })
+        Ok(Minio { bucket: _bucket })
     }
 
-    pub async fn get_object<T>(&self, path:T) -> Result<ResponseData, S3Error> where T:AsRef<str> {
+    pub async fn get_object<T>(&self, path: T) -> Result<ResponseData, S3Error>
+    where
+        T: AsRef<str>,
+    {
         // let l = self.bucket.list("/".to_string(), Some("/".to_string())).await.unwrap();
         // println!("{:?}", l);
         let data = self.bucket.get_object(path).await?;
         Ok(data)
     }
+}
+
+pub fn stage() -> AdHoc {
+    AdHoc::on_ignite("minio", |r| async {
+        let conf: MyConf = Figment::new()
+            .join(Json::file("config.json"))
+            .extract()
+            .expect("加载配置错误");
+
+        let minio = Minio::new(
+            conf.minio.bucket_name.clone(),
+            conf.minio.endpoint.clone(),
+            conf.minio.user.clone(),
+            conf.minio.password.clone(),
+        )
+        .await
+        .unwrap();
+
+        r.manage(minio).manage(conf)
+    })
 }

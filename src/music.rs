@@ -1,22 +1,22 @@
 use rocket::{
-    form::Form,
-    http::{Cookie, CookieJar, Status},
-    outcome::IntoOutcome,
-    request::{self, FromRequest, Outcome, Request},
-    response::{Flash, Redirect}, serde::json::Json,
+    http::{ContentType},
 };
-use super::mariadb::Db;
 use crate::login::User;
-use crate::minio;
 use crate::musiclib::MusicLib;
 
-#[get("/query/<name>")]
-async fn get_music(name:String, user:User, musiclib:MusicLib<'_>)->String{
-    let music = musiclib.get_music(name.as_str()).await;
+#[derive(Responder)]
+#[response(status = 200, content_type = "json")]
+struct Mp3(Vec<u8>);
 
+#[get("/query/<name>")]
+async fn get_music(name:String, _user:User, musiclib:MusicLib<'_>)->Option<(ContentType, Vec<u8>)>{
+    let music = musiclib.get_music(name.as_str()).await;
+    
     match music {
-        Some(_) =>{format!("music name:{}, user_id:{}",name, user.0)},
-        None => {"error".to_string()}
+        Some(data) =>{            
+            Some((ContentType::MPEG, data.0))
+        },
+        None => {None}
     }
     
 }

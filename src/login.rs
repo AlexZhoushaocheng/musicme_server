@@ -2,20 +2,19 @@ use rocket::{
     form::Form,
     http::{Cookie, CookieJar, Status},
     outcome::IntoOutcome,
-    request::{self, FromRequest, Outcome, Request},
+    request::{self, FromRequest, Request},
 };
 
 use super::mariadb::Db;
 use rocket::serde::{json::Json, Deserialize, Serialize};
-use rocket_db_pools::{sqlx, Connection, Database};
 
 pub struct User(pub String);
 
-#[derive(Debug)]
-pub enum ApiKeyError {
-    Missing,
-    Invalid,
-}
+// #[derive(Debug)]
+// pub enum ApiKeyError {
+//     Missing,
+//     Invalid,
+// }
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for User {
@@ -24,8 +23,7 @@ impl<'r> FromRequest<'r> for User {
         req.cookies()
             .get_private("user_id")
             .and_then(|cookie| Some(cookie.value().to_string()))
-            .map(User)
-            .or_forward(())
+            .map(User).into_outcome((Status::Unauthorized, ()))
     }
 }
 
