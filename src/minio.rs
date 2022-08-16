@@ -25,7 +25,7 @@ use s3::request_trait::ResponseData;
 // }
 
 pub struct Minio {
-    bucket: Bucket,
+    pub bucket: Bucket,
 }
 
 impl Minio {
@@ -67,6 +67,7 @@ impl Minio {
     {
         // let l = self.bucket.list("/".to_string(), Some("/".to_string())).await.unwrap();
         // println!("{:?}", l);
+        // self.bucket.get_object_stream(path, writer)?;
         let data = self.bucket.get_object(path).await?;
         Ok(data)
     }

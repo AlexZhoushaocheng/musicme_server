@@ -13,6 +13,8 @@ Musicme 的服务器，用来为客户端音乐资源。
 * 搜索音乐（整个库中）
 * 最爱（favorite）列表
 
+
+## 配置
 ### User table 
 |id|name|create_time|
 |---|---|---|

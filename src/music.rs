@@ -1,34 +1,80 @@
+ 
 use rocket::{
-    http::{ContentType}, serde::json::Json,
+    http::{ContentType}, serde::json::{Json, self},
 };
 use crate::login::User;
 use crate::musiclib::{MusicLib, SearchType, Song};
+use rocket::serde::{Deserialize, Serialize};
 
-// #[derive(Responder)]
-// #[response(status = 200, content_type = "json")]
-// struct Mp3(Vec<u8>);
 
-#[get("/query/<name>")]
-async fn get_music(name:String, _user:User, musiclib:MusicLib<'_>)->Option<(ContentType, Vec<u8>)>{
-    let music = musiclib.get_music(name.as_str()).await;
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct ResJ {
+    success: bool,
+    msg: Option<String>,
+    
+    data: json::Value
+}
+
+
+#[get("/query/<uuid>")]
+async fn get_music(uuid:String, musiclib:MusicLib<'_>)->Option<(ContentType, Vec<u8>)>{
+    let v:Vec<&str> = uuid.split('.').collect();
+    let music = musiclib.get_music(v[0]).await;
     
     match music {
         Some(data) =>{            
-            Some((ContentType::MPEG, data.0))
+            Some((ContentType::MP4, data.0))
         },
         None => {None}
     }
     
 }
 
-#[get("/search/<key>")]
-async fn search_song( _user:User, musiclib:MusicLib<'_>, key:&str)->Option<Json<Vec<Song>>>{
-     match musiclib.search_song(key, SearchType::ByName).await {
-         Ok(songs) => Some(Json(songs)),
-         Err(_) => None
+#[get("/search/<key>/<by>")]
+async fn search_song( _user:User, musiclib:MusicLib<'_>, key:&str, by:&str)->Json<ResJ>{
+     match musiclib.search_song(key, SearchType::from(by)).await {
+         Ok(songs) => {
+
+            let v = json::to_value(songs).unwrap();
+            // json
+            Json(ResJ{
+                success:true,
+                msg:None,
+                data: v
+            })
+         },
+         Err(e) => {
+            Json(ResJ{
+                success:false,
+                msg:Some(e),
+                data: json::Value::Null
+            })
+         }
      } 
 }
 
+#[get("/add2favorite/<uuid>")]
+async fn add2favorite(user: User, uuid:&str, musiclib:MusicLib<'_>)->Json<ResJ>{
+    match  musiclib.add2favorite(user.id, uuid).await {
+        Ok(_) => {
+            // json
+            Json(ResJ{
+                success:true,
+                msg:None,
+                data: json::Value::Null
+            })
+         },
+         Err(e) => {
+            Json(ResJ{
+                success:false,
+                msg:Some(e),
+                data: json::Value::Null
+            })
+         }
+    } 
+}
+
 pub fn routes() -> Vec<rocket::Route> {
-    routes![get_music, search_song]
+    routes![get_music, search_song, add2favorite]
 }

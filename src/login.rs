@@ -1,14 +1,17 @@
 use rocket::{
     form::Form,
     http::{Cookie, CookieJar, Status},
-    outcome::IntoOutcome,
-    request::{self, FromRequest, Request},
+    request::{self, FromRequest, Outcome, Request},
 };
 
-use super::mariadb::Db;
+use super::musiclib::MusicLib;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 
-pub struct User(pub String);
+// #[derive(Default)]
+pub struct User {
+    pub id: i64,
+    pub username: String,
+}
 
 // #[derive(Debug)]
 // pub enum ApiKeyError {
@@ -20,25 +23,43 @@ pub struct User(pub String);
 impl<'r> FromRequest<'r> for User {
     type Error = ();
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        req.cookies()
+        let db_out = req.guard::<MusicLib>().await;
+
+        let db = match db_out {
+            Outcome::Success(db) => db,
+            Outcome::Failure(e) => return Outcome::Failure(e),
+            Outcome::Forward(f) => return Outcome::Forward(f),
+        };
+
+        let username = req
+            .cookies()
             .get_private("user_id")
-            .and_then(|cookie| Some(cookie.value().to_string()))
-            .map(User).into_outcome((Status::Unauthorized, ()))
+            .and_then(|cookie| Some(cookie.value().to_string()));
+        let user_id = username.unwrap();
+        let info_ret = db.get_user(user_id.as_str()).await.map_err(|err| err);
+
+        match info_ret {
+            Ok(info) => Outcome::Success(User {
+                id: info.id,
+                username: info.username,
+            }),
+            Err(_) => Outcome::Failure((Status::BadRequest, ())),
+        }
+        // .map(User).into_outcome((Status::Unauthorized, ()))
     }
 }
 
 pub struct Admin(String);
 
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for Admin {
-    type Error = ();
-    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let user = req.guard::<User>().await;
-        let ad = user.map(|u|{Admin(u.0)});
-        ad
-    }
-}
-
+// #[rocket::async_trait]
+// impl<'r> FromRequest<'r> for Admin {
+//     type Error = ();
+//     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+//         let user = req.guard::<User>().await;
+//         let ad = user.map(|u|{Admin(u.0)});
+//         ad
+//     }
+// }
 
 // 登录Form
 #[derive(FromForm)]
@@ -55,7 +76,11 @@ struct Res<'r> {
 }
 
 #[post("/login", data = "<login>")]
-async fn post_login(jar: &CookieJar<'_>, login: Form<Login<'_>>, db: &Db) -> Json<Res<'static>> {
+async fn post_login(
+    jar: &CookieJar<'_>,
+    login: Form<Login<'_>>,
+    db: MusicLib<'_>,
+) -> Json<Res<'static>> {
     let user = db.get_user(login.username).await;
     let d_password = md5::compute(login.password);
 
@@ -81,9 +106,8 @@ async fn post_login(jar: &CookieJar<'_>, login: Form<Login<'_>>, db: &Db) -> Jso
     }
 }
 
-
 #[get("/logout")]
-fn logout(jar: &CookieJar<'_>){
+fn logout(jar: &CookieJar<'_>) {
     jar.remove_private(Cookie::named("user_id"))
 }
 
