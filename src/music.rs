@@ -2,7 +2,7 @@
 use rocket::{
     http::{ContentType}, serde::json::{Json, self},
 };
-use crate::login::User;
+use crate::login::UserInfo;
 use crate::musiclib::{MusicLib, SearchType, Song};
 use rocket::serde::{Deserialize, Serialize};
 
@@ -18,7 +18,7 @@ struct ResJ {
 
 
 #[get("/query/<uuid>")]
-async fn get_music(uuid:String, musiclib:MusicLib<'_>)->Option<(ContentType, Vec<u8>)>{
+async fn get_music(uuid:String, _user_info:UserInfo, musiclib:MusicLib<'_>)->Option<(ContentType, Vec<u8>)>{
     let v:Vec<&str> = uuid.split('.').collect();
     let music = musiclib.get_music(v[0]).await;
     
@@ -32,7 +32,7 @@ async fn get_music(uuid:String, musiclib:MusicLib<'_>)->Option<(ContentType, Vec
 }
 
 #[get("/search/<key>/<by>")]
-async fn search_song( _user:User, musiclib:MusicLib<'_>, key:&str, by:&str)->Json<ResJ>{
+async fn search_song( _user_info:UserInfo, musiclib:MusicLib<'_>, key:&str, by:&str)->Json<ResJ>{
      match musiclib.search_song(key, SearchType::from(by)).await {
          Ok(songs) => {
 
@@ -55,8 +55,8 @@ async fn search_song( _user:User, musiclib:MusicLib<'_>, key:&str, by:&str)->Jso
 }
 
 #[get("/add2favorite/<uuid>")]
-async fn add2favorite(user: User, uuid:&str, musiclib:MusicLib<'_>)->Json<ResJ>{
-    match  musiclib.add2favorite(user.id, uuid).await {
+async fn add2favorite(_user_info: UserInfo, uuid:&str, musiclib:MusicLib<'_>)->Json<ResJ>{
+    match  musiclib.add2favorite(_user_info.id, uuid).await {
         Ok(_) => {
             // json
             Json(ResJ{
