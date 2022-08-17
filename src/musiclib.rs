@@ -6,6 +6,9 @@ use crate::{
 use rocket::request::{self, FromRequest, Outcome, Request};
 use rocket::serde::{json::Json, Deserialize, Serialize};
 
+// 分页每页的数量
+const PAGE_LIMIT: i32 = 2;
+
 // 歌曲信息
 #[derive(Debug, Deserialize, Serialize, sqlx::FromRow)]
 #[serde(crate = "rocket::serde")]
@@ -58,7 +61,7 @@ impl<'r> FromRequest<'r> for MusicLib<'r> {
 
 #[derive(sqlx::FromRow)]
 struct Count {
-    count:i64
+    count: i64,
 }
 
 pub struct Music(pub Vec<u8>);
@@ -66,12 +69,6 @@ pub struct Music(pub Vec<u8>);
 impl<'l> MusicLib<'l> {
     // 获取音乐数据
     pub async fn get_music(&self, name: &str) -> Option<Music> {
-        let data = self.minio.get_object(format!("/{}", name)).await.ok()?;
-        Some(Music(data.bytes().to_vec()))
-    }
-
-    // 获取音乐数据
-    pub async fn get_music_stream(&self, name: &str) -> Option<Music> {
         let data = self.minio.get_object(format!("/{}", name)).await.ok()?;
         Some(Music(data.bytes().to_vec()))
     }
@@ -137,7 +134,7 @@ impl<'l> MusicLib<'l> {
             .map_err(sqlx_err)?;
         Ok(())
     }
-     
+
     // uuid没有被校验是否真实存在
     pub async fn add2favorite(&self, user_id: i64, uuid: &str) -> mariadb::Result<()> {
         // 是否重复添加
@@ -156,9 +153,49 @@ impl<'l> MusicLib<'l> {
         }
 
         // 插入
-        sqlx::query("INSERT INTO `musicme`.`favorite`(`user_id`, `music_uuid`) VALUES (?, ?)").bind(user_id)
-        .bind(uuid).execute(&mut conn).await.map_err(sqlx_err)?;
+        sqlx::query("INSERT INTO `musicme`.`favorite`(`user_id`, `music_uuid`) VALUES (?, ?)")
+            .bind(user_id)
+            .bind(uuid)
+            .execute(&mut conn)
+            .await
+            .map_err(sqlx_err)?;
 
         Ok(())
+    }
+
+    // 获取favorite表中的数据
+    pub async fn my_favorite(&self, user_id: i64) -> mariadb::Result<Vec<Song>> {
+        let mut conn = self.maria.get_conn().await?;
+
+        let songs: Vec<Song> = sqlx::query_as("SELECT musicme.* FROM favorite  RIGHT JOIN musicme ON favorite.music_uuid = musicme.uuid WHERE user_id=?").bind(user_id).fetch_all(&mut conn).await.map_err(sqlx_err)?;
+
+        Ok(songs)
+    }
+
+    pub async fn remove_favorite(&self, user_id: i64, uuid: &str) -> mariadb::Result<()> {
+        let mut conn = self.maria.get_conn().await?;
+
+        sqlx::query(
+            "DELETE FROM `musicme`.`favorite` WHERE `user_id` = ? AND `music_uuid` = ? LIMIT 1",
+        )
+        .bind(user_id)
+        .bind(uuid)
+        .execute(&mut conn)
+        .await
+        .map_err(sqlx_err)?;
+        Ok(())
+    }
+
+    // 分页查询整个音乐库
+    pub async fn query_by_page(&self, page_num: i32) -> mariadb::Result<Vec<Song>> {
+        let mut conn = self.maria.get_conn().await?;
+        let songs: Vec<Song> = sqlx::query_as("SELECT * FROM musicme LIMIT ?,?")
+            .bind((page_num - 1) * PAGE_LIMIT)
+            .bind(PAGE_LIMIT)
+            .fetch_all(&mut conn)
+            .await
+            .map_err(sqlx_err)?;
+
+        Ok(songs)
     }
 }
